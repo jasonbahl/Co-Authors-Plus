@@ -523,7 +523,11 @@ class CoAuthors_Plus {
 		$term_ids = $wpdb->get_results( "SELECT term_id FROM $wpdb->term_taxonomy WHERE term_taxonomy_id IN ($tt_ids)" );
 
 		foreach ( (array) $term_ids as $term_id_result ) {
-			$term = get_term_by( 'id', $term_id_result->term_id, $this->coauthor_taxonomy );
+			if ( function_exists( 'wpcom_vip_get_term_by' ) ) {
+				$term = wpcom_vip_get_term_by( 'id', $term_id_result->term_id, $this->coauthor_taxonomy );
+			} else {
+				$term = get_term_by( 'id', $term_id_result->term_id, $this->coauthor_taxonomy );
+			}
 			$this->update_author_term_post_count( $term );
 		}
 		$tt_ids = explode( ', ', $tt_ids );
@@ -546,7 +550,11 @@ class CoAuthors_Plus {
 
 		$term_id = $wpdb->get_results( $wpdb->prepare( "SELECT term_id FROM $wpdb->term_taxonomy WHERE term_taxonomy_id = %d ", $tt_id ) );
 
-		$term = get_term_by( 'id', $term_id[0]->term_id, $taxonomy );
+		if ( function_exists( 'wpcom_vip_get_term_by' ) ) {
+			$term = wpcom_vip_get_term_by( 'id', $term_id[0]->term_id, $taxonomy );
+		} else {
+			$term = get_term_by( 'id', $term_id[0]->term_id, $taxonomy );	
+		}
 		$coauthor = $this->get_coauthor_by( 'user_nicename', $term->slug );
 		if ( ! $coauthor ) {
 			return new WP_Error( 'missing-coauthor', __( 'No co-author exists for that term', 'co-authors-plus' ) );
@@ -784,8 +792,9 @@ class CoAuthors_Plus {
 	}
 
 	function has_author_terms( $post_id ) {
-		$terms = wp_get_object_terms( $post_id, $this->coauthor_taxonomy, array( 'fields' => 'ids' ) );
-		return ! empty( $terms ) && ! is_wp_error( $terms );
+		$term_objects = get_the_terms( $post_id, $this->coauthor_taxonomy );
+		$terms = ( ! is_wp_error( $term_objects ) ) ? wp_list_pluck( $term_objects, 'term_id' ) : array();
+		return ! empty( $terms );
 	}
 
 	/**
@@ -1330,9 +1339,18 @@ class CoAuthors_Plus {
 		}
 
 		// See if the prefixed term is available, otherwise default to just the nicename
-		$term = get_term_by( 'slug', 'cap-' . $coauthor->user_nicename, $this->coauthor_taxonomy );
+		if ( function_exists( 'wpcom_vip_get_term_by' ) ) {
+			$term = wpcom_vip_get_term_by( 'slug', 'cap-' . $coauthor->user_nicename, $this->coauthor_taxonomy );
+		} else {
+			$term = get_term_by( 'slug', 'cap-' . $coauthor->user_nicename, $this->coauthor_taxonomy );	
+		}
+		
 		if ( ! $term ) {
-			$term = get_term_by( 'slug', $coauthor->user_nicename, $this->coauthor_taxonomy );
+			if ( function_exists( 'wpcom_vip_get_term_by' ) ) {
+				$term = wpcom_vip_get_term_by( 'slug', $coauthor->user_nicename, $this->coauthor_taxonomy );
+			} else {
+				$term = get_term_by( 'slug', $coauthor->user_nicename, $this->coauthor_taxonomy );		
+			}
 		}
 		wp_cache_set( $cache_key, $term, 'co-authors-plus' );
 		return $term;
